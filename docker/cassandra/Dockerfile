@@ -1,0 +1,3 @@
+FROM cassandra:latest
+
+
