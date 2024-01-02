@@ -18,6 +18,8 @@ object MakePrediction {
       .appName("StructuredNetworkWordCount")
       .master("local[*]")
       .getOrCreate()
+      .config("spark.cassandra.connection.host", "127.0.0.1") // Cambia la dirección y puertos según la configuración de Cassandra
+      .config("spark.cassandra.connection.port", "9042")
     import spark.implicits._
 
     //Load the arrival delay bucketizer
@@ -147,21 +149,27 @@ object MakePrediction {
     //    MongoSpark.save(batchDF,writeConfig)
     //}.start()
 
-    // define a streaming query
-    val dataStreamWriter = finalPredictions
+    // define a streaming query - using Cassandra as DDBB
+    val dataStreamWriter = finalPredictions.write
+      .format("org.apache.spark.sql.cassandra")
+      .options(Map("keyspace" -> "agile_data_science", "table" -> "flight_delay_classification_response"))
+      .mode("append")
+      .save()
+    
+    //val dataStreamWriter = finalPredictions
 
       //spark.readStream
 
       //.schema(finalPredictions.schema)
       //.load()
       // manipulate your streaming data
-      .writeStream
-      .format("mongodb")
-      .option("spark.mongodb.connection.uri", "mongodb://127.0.0.1:27017")
-      .option("spark.mongodb.database", "agile_data_science")
-      .option("checkpointLocation", "/tmp")
-      .option("spark.mongodb.collection", "flight_delay_classification_response")
-      .outputMode("append")
+      //.writeStream
+      //.format("mongodb")
+      //.option("spark.mongodb.connection.uri", "mongodb://127.0.0.1:27017")
+      //.option("spark.mongodb.database", "agile_data_science")
+      //.option("checkpointLocation", "/tmp")
+      //.option("spark.mongodb.collection", "flight_delay_classification_response")
+      //.outputMode("append")
 
     // run the query
     val query = dataStreamWriter.start()
