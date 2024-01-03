@@ -8,6 +8,8 @@ import org.apache.spark.sql.functions.{concat, from_json, lit}
 import org.apache.spark.sql.types.{DataTypes, StructType}
 import org.apache.spark.sql.{DataFrame, SparkSession}
 
+import com.datastax.spark.connector._
+
 object MakePrediction {
 
   def main(args: Array[String]): Unit = {
@@ -16,14 +18,19 @@ object MakePrediction {
     val spark = SparkSession
       .builder
       .appName("StructuredNetworkWordCount")
-      .master("local[*]")
+      //.config('spark.jars.packages', "com.datastax.spark:spark-cassandra-connector_2.12:3.3.0,     Creo que esto no hace falta ya que los cogemos con el comando de spark-submit
+      //                                org.apache.spark:spark-sql-kafka-0-10_2.12:3.3.0")
+      
+      //.config("spark.cassandra.connection.host", "localhost") // Cambia la dirección y puertos según la configuración de Cassandra
+      //.config("spark.cassandra.connection.port", "7000")
+      .master("local[*]")  // Esto se cambia cuando el master esté en otro lado
       .getOrCreate()
-      .config("spark.cassandra.connection.host", "127.0.0.1") // Cambia la dirección y puertos según la configuración de Cassandra
-      .config("spark.cassandra.connection.port", "9042")
+    
     import spark.implicits._
 
     //Load the arrival delay bucketizer
-    val base_path= "/Users/admin/Downloads/practica_big_data_2019"
+    //val base_path= "/Users/admin/Downloads/practica_big_data_2019"
+    val base_path= "/home/ibdn/practica_creativa"
     val arrivalBucketizerPath = "%s/models/arrival_bucketizer_2.0.bin".format(base_path)
     print(arrivalBucketizerPath.toString())
     val arrivalBucketizer = Bucketizer.load(arrivalBucketizerPath)
@@ -48,7 +55,7 @@ object MakePrediction {
     val df = spark
       .readStream
       .format("kafka")
-      .option("kafka.bootstrap.servers", "localhost:9092")
+      .option("kafka.bootstrap.servers", "localhost:9092")  //Aquí habrá que cambiar cuando sea kafka en contenedor diferente creo
       .option("subscribe", "flight_delay_classification_request")
       .load()
     df.printSchema()
@@ -150,11 +157,18 @@ object MakePrediction {
     //}.start()
 
     // define a streaming query - using Cassandra as DDBB
-    val dataStreamWriter = finalPredictions.write
+    val dataStreamWriter = finalPredictions
+      .writeStream
       .format("org.apache.spark.sql.cassandra")
-      .options(Map("keyspace" -> "agile_data_science", "table" -> "flight_delay_classification_response"))
-      .mode("append")
-      .save()
+      .outputMode("append")
+      .option("spark.cassandra.connection.host", "127.0.0.1")
+      .option("spark.cassandra.connection.port", "9042")
+      .option("keyspace", "agile_data_science")
+      //.mode("append")
+      .option("table", "flight_delay_classification_response")
+      .option("checkpointLocation", "/tmp")
+      .option("confirm.truncate", true)
+      //.save()  //Según el vídeo no hace falta esto, sino start
     
     //val dataStreamWriter = finalPredictions
 
@@ -173,8 +187,10 @@ object MakePrediction {
 
     // run the query
     val query = dataStreamWriter.start()
-    // Console Output for predictions
+    //val query = dataStreamWriter.save()
+    query.awaitTermination()
 
+    // Console Output for predictions
     val consoleOutput = finalPredictions.writeStream
       .outputMode("append")
       .format("console")

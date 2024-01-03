@@ -1,6 +1,8 @@
 import sys, os, re
 from flask import Flask, render_template, request
 from pymongo import MongoClient
+from cassandra.cluster import Cluster
+from cassandra.query import ordered_dict_factory
 from bson import json_util
 
 # Configuration details
@@ -17,6 +19,7 @@ client = MongoClient()
 from pyelasticsearch import ElasticSearch
 elastic = ElasticSearch(config.ELASTIC_URL)
 
+
 import json
 
 # Date/time stuff
@@ -27,6 +30,15 @@ import datetime
 from kafka import KafkaProducer
 producer = KafkaProducer(bootstrap_servers=['localhost:9092'],api_version=(0,10))
 PREDICTION_TOPIC = 'flight_delay_classification_request'
+
+## SETUP CASSANDRA
+cluster = Cluster()
+session = cluster.connect('agile_data_science')
+
+session.row_factory = ordered_dict_factory
+
+#app.config['CASSANDRA_NODES'] = ['locahost']  # string or list of nodes
+#app.config['CASSANDRA_KEYSPACE'] = 'agile_data_science' # keyspace
 
 import uuid
 
@@ -46,7 +58,7 @@ def on_time_performance():
   
   return render_template('flight.html', flight=flight)
 
-# Chapter 5 controller: Fetch all flights between cities on a given day and display them
+# Chapter 5 controller: Fetch all flights beeween cities on a given day and display them
 @app.route("/flights/<origin>/<dest>/<flight_date>")
 def list_flights(origin, dest, flight_date):
   
@@ -511,13 +523,22 @@ def flight_delays_page_kafka():
 
 @app.route("/flights/delays/predict/classify_realtime/response/<unique_id>")
 def classify_flight_delays_realtime_response(unique_id):
+
   """Serves predictions to polling requestors"""
+
+  cql = "SELECT * FROM flight_delay_classification_response WHERE \"UUID\"='" + unique_id + "'"
+  r = session.execute(cql)
   
-  prediction = client.agile_data_science.flight_delay_classification_response.find_one(
-    {
-      "UUID": unique_id
-    }
-  )
+  prediction = r.one()
+  
+  #prediction = json.dumps(r_list, default = str)
+  
+  #prediction = client.agile_data_science.flight_delay_classification_response.find_one(
+  #  {
+  #    "UUID": unique_id
+  #  }
+  #)
+  
   
   response = {"status": "WAIT", "id": unique_id}
   if prediction:
