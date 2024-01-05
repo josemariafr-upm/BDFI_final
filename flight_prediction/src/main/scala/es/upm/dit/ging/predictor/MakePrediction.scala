@@ -161,7 +161,7 @@ object MakePrediction {
       .writeStream
       .format("org.apache.spark.sql.cassandra")
       .outputMode("append")
-      .option("spark.cassandra.connection.host", "127.0.0.1")
+      .option("spark.cassandra.connection.host", "127.0.0.1") //Cambiar por cassandra creo
       .option("spark.cassandra.connection.port", "9042")
       .option("keyspace", "agile_data_science")
       //.mode("append")
