@@ -164,8 +164,10 @@ object MakePrediction {
       .writeStream
       .format("org.apache.spark.sql.cassandra")
       .outputMode("append")
-      .option("spark.cassandra.connection.host", "cassandra") //Cambiar por cassandra creo
+      .option("spark.cassandra.connection.host", "localhost")
       .option("spark.cassandra.connection.port", "9042")
+      //.option("spark.cassandra.auth.username", "cassandra")
+      //.option("spark.cassandra.auth.password", "cassandra")
       .option("keyspace", "agile_data_science")
       //.mode("append")
       .option("table", "flight_delay_classification_response")
