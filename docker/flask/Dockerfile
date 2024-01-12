@@ -10,3 +10,4 @@ RUN git clone https://github.com/josemariafr-upm/BDFI_final.git
 WORKDIR /bdfi/BDFI_final
 RUN pip install -r requirements.txt
 
+RUN rm -rf BDFI_final/
