@@ -170,7 +170,7 @@ services:
       - "SPARK_MASTER=spark://spark-master:7077"
       - "constraint:node==spark-master"
       - "SERVER=proxy"
-    command: bash -c "sleep 15; cd /BDFI_final/flight_prediction && /spark/bin/spark-submit --class es.upm.dit.ging.predictor.MakePrediction --master  spark://spark-master:7077 --packages org.mongodb.spark:mongo-spark-connector_2.12:10.1.1,org.apache.spark:spark-sql-kafka-0-10_2.12:3.3.0 flight_prediction/target/scala-2.12/flight_prediction_2.12-0.1.jar"
+    command: bash -c "sleep 15; cd /BDFI_final && /spark/bin/spark-submit --class es.upm.dit.ging.predictor.MakePrediction --master  spark://spark-master:7077 --packages org.mongodb.spark:mongo-spark-connector_2.12:10.1.1,org.apache.spark:spark-sql-kafka-0-10_2.12:3.3.0 flight_prediction/target/scala-2.12/flight_prediction_2.12-0.1.jar"
     volumes:
       - ../../BDFI_final:/BDFI_final
       #- ../flight_prediction:/flight_prediction
