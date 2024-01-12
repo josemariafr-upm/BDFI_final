@@ -185,7 +185,7 @@ services:
     image: josemariafrupm/flask2-bdfi
     container_name: flask
     environment:
-      - PROJECT_HOME=/bdfi/BDFI_final
+      - PROJECT_HOME=/BDFI_final
     networks:
       - bdfinet
     depends_on:
