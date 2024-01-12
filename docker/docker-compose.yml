@@ -207,17 +207,20 @@ services:
     networks:
       - bdfinet
   
-  # #####################
-  # ####### FLASK #######
-  # #####################
+  #####################
+  ####### FLASK #######
+  #####################
 
   flask:
-    image: josemariafrupm/flask2-bdfi
+    image: josemariafrupm/flask-bdfi
     container_name: flask
     environment:
       - PROJECT_HOME=/BDFI_final
     networks:
       - bdfinet
+    ports:
+      - 5000:5000
+      - 5001:5001
     depends_on:
       - spark-master
       - spark-worker-1
@@ -228,7 +231,7 @@ services:
       - bash
       - -c 
       - |
-        echo "Waiting some time to spark-submit (1min30s)" && sleep 30
+        echo "Waiting some time to spark-submit (2 minutes)" && sleep 60
         echo "60 seconds" && sleep 10
         echo "50 seconds" && sleep 10
         echo "40 seconds" && sleep 10
@@ -242,36 +245,6 @@ services:
         echo "1" && sleep 1
         cd /BDFI_final/resources/web
         python3 predict_flask.py
-
-    ## Another possible option
-
-    # image: python:3.11.7-slim-bookworm
-    # container_name: flask
-    # environment:
-    #   - PROJECT_HOME=/bdfi/BDFI_final
-    # networks:
-    #   - bdfinet
-    # depends_on:
-    #   mongodb:
-    #     condition: service_completed_successfully
-    #   zookeeper:
-    #     condition: service_completed_successfully
-    #   kafka:
-    #     condition: service_completed_successfully
-    #   cassandra:
-    #     condition: service_completed_successfully
-    #   spark-submit:
-    #     condition: service_completed_successfully
-    # volumes:
-    #   - ../../BDFI_final:/BDFI_final
-    # command: 
-    #   - bash
-    #   - -c 
-    #   - |
-    #     cd /BDFI_final
-    #     pip install -r requirements.txt
-    #     cd /BDFI_final/resources/web
-    #     python3 predict-flask.py
     
 networks:
   bdfinet:
