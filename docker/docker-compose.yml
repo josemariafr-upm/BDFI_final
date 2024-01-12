@@ -189,9 +189,10 @@ services:
     networks:
       - bdfinet
     depends_on:
-      - spark-submit
-    # volumes:
-    #   - ../../BDFI_final:/BDFI_final
+      spark-submit:
+        condition: service_completed_successfully
+    volumes:
+      - ../../BDFI_final:/BDFI_final
     command: 
       - bash
       - -c 
