@@ -170,10 +170,10 @@ services:
       - "SPARK_MASTER=spark://spark-master:7077"
       - "constraint:node==spark-master"
       - "SERVER=proxy"
-    command: bash -c "sleep 15; /spark/bin/spark-submit --class es.upm.dit.ging.predictor.MakePrediction --master  spark://spark-master:7077 --packages org.mongodb.spark:mongo-spark-connector_2.12:10.1.1,org.apache.spark:spark-sql-kafka-0-10_2.12:3.3.0 flight_prediction/target/scala-2.12/flight_prediction_2.12-0.1.jar"
+    command: bash -c "sleep 15; cd /BDFI/flight_prediction && /spark/bin/spark-submit --class es.upm.dit.ging.predictor.MakePrediction --master  spark://spark-master:7077 --packages org.mongodb.spark:mongo-spark-connector_2.12:10.1.1,org.apache.spark:spark-sql-kafka-0-10_2.12:3.3.0 flight_prediction/target/scala-2.12/flight_prediction_2.12-0.1.jar"
     volumes:
       - ../../BDFI_final:/BDFI_final
-      #- ../../flight_prediction:/flight_prediction
+      #- ../flight_prediction:/flight_prediction
     networks:
       - bdfinet
   
@@ -181,24 +181,24 @@ services:
   # ####### FLASK #######
   # #####################
 
-  # flask:
-  #   image: josemariafrupm/flask2-bdfi
-  #   container_name: flask
-  #   environment:
-  #     - PROJECT_HOME=/BDFI_final
-  #   networks:
-  #     - bdfinet
-  #   depends_on:
-  #     spark-submit:
-  #       condition: service_completed_successfully
-  #   volumes:
-  #     - ../../BDFI_final:/BDFI_final
-  #   command: 
-  #     - bash
-  #     - -c 
-  #     - |
-  #       cd /BDFI_final/resources/web
-  #       python3 predict-flask.py
+  flask:
+    image: josemariafrupm/flask2-bdfi
+    container_name: flask
+    environment:
+      - PROJECT_HOME=/BDFI_final
+    networks:
+      - bdfinet
+    depends_on:
+      spark-submit:
+        condition: service_completed_successfully
+    volumes:
+      - ../../BDFI_final:/BDFI_final
+    command: 
+      - bash
+      - -c 
+      - |
+        cd /BDFI_final/resources/web
+        python3 predict-flask.py
 
     ## Another possible option
 
