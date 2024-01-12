@@ -1,9 +1,11 @@
 import sys, os, re
 from flask import Flask, render_template, request
 from pymongo import MongoClient
+from bson import json_util
+
 from cassandra.cluster import Cluster
 from cassandra.query import ordered_dict_factory
-from bson import json_util
+from cassandra.auth import PlainTextAuthProvider
 
 # Configuration details
 import config
@@ -28,11 +30,12 @@ import datetime
 
 # Setup Kafka
 from kafka import KafkaProducer
-producer = KafkaProducer(bootstrap_servers=['localhost:9092'],api_version=(0,10))
+producer = KafkaProducer(bootstrap_servers=['kafka:9092'],api_version=(0,10))
 PREDICTION_TOPIC = 'flight_delay_classification_request'
 
 ## SETUP CASSANDRA
-cluster = Cluster()
+auth_provider = PlainTextAuthProvider(username='cassandra', password='cassandra')
+cluster = Cluster(["cassandra"],auth_provider = auth_provider)
 session = cluster.connect('agile_data_science')
 
 session.row_factory = ordered_dict_factory
