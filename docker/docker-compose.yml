@@ -179,30 +179,31 @@ services:
     command: 
       - bash 
       - -c
-      - echo "Waiting 1 minute to cassandra"
-      - sleep 10
-      - echo "50 second"
-      - sleep 10
-      - echo "40 second"
-      - sleep 10
-      - echo "30 second"
-      - sleep 10
-      - echo "20 second"
-      - sleep 10
-      - echo "10 second"
-      - sleep 5
-      - echo "5"
-      - sleep 1
-      - echo "4"
-      - sleep 1
-      - echo "3"
-      - sleep 1
-      - echo "2"
-      - sleep 1
-      - echo "1"
-      - sleep 1
-      - echo "Executing spark-submit"
-      - /spark/bin/spark-submit --class es.upm.dit.ging.predictor.MakePrediction --master  spark://spark-master:7077 --packages org.mongodb.spark:mongo-spark-connector_2.12:10.1.1,org.apache.spark:spark-sql-kafka-0-10_2.12:3.3.0,com.datastax.spark:spark-cassandra-connector_2.12:3.3.0 BDFI_final/flight_prediction/target/scala-2.12/flight_prediction_2.12-0.1.jar"
+      - |
+        echo "Waiting 1 minute to cassandra"
+        sleep 10
+        echo "50 second"
+        sleep 10
+        echo "40 second"
+        sleep 10
+        echo "30 second"
+        sleep 10
+        echo "20 second"
+        sleep 10
+        echo "10 second"
+        sleep 5
+        echo "5"
+        sleep 1
+        echo "4"
+        sleep 1
+        echo "3"
+        sleep 1
+        echo "2"
+        sleep 1
+        echo "1"
+        sleep 1
+        echo "Executing spark-submit"
+        /spark/bin/spark-submit --class es.upm.dit.ging.predictor.MakePrediction --master  spark://spark-master:7077 --packages org.mongodb.spark:mongo-spark-connector_2.12:10.1.1,org.apache.spark:spark-sql-kafka-0-10_2.12:3.3.0,com.datastax.spark:spark-cassandra-connector_2.12:3.3.0 BDFI_final/flight_prediction/target/scala-2.12/flight_prediction_2.12-0.1.jar
     volumes:
       - ../../BDFI_final:/BDFI_final
       #- ../flight_prediction:/flight_prediction
