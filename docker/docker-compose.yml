@@ -6,54 +6,46 @@ services:
   ##########################
 
   zookeeper:
-  image: bitnami/zookeeper
-  container_name: zookeeper
-  ports:
-      - "2181:2181"
-  environment:
-      - ALLOW_ANONYMOUS_LOGIN=yes
-      - ZOO_AUTOPURGE_INTERVAL=1
-  networks:
-      - bdfinet
-  kafka:
-    image: bitnami/kafka
-    container_name: kafka
+    image: wurstmeister/zookeeper
+    container_name: zookeeper
     ports:
-      - 9092:9092
+      - "2181:2181"
     networks:
       - bdfinet
-    depends_on:
-      zookeeper:
-        condition: service_started
+  
+  kafka:
+    image: wurstmeister/kafka
+    container_name: kafka
+    ports:
+      - "9092:9092"
     environment:
-      - KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper:2181
-    command: bash -c "/opt/bitnami/kafka/bin/kafka-topics.sh --create --bootstrap-server kafka:9092 --replication-factor 1 --partitions 1 --topic flight_delay_classification_request" #No se si funcionaría
-    #command: bash -c "/opt/bitnami/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list"
+      KAFKA_ADVERTISED_LISTENERS: INSIDE://kafka:9092,OUTSIDE://localhost:9093
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INSIDE:PLAINTEXT,OUTSIDE:PLAINTEXT
+      KAFKA_LISTENERS: INSIDE://0.0.0.0:9092,OUTSIDE://0.0.0.0:9093
+      KAFKA_INTER_BROKER_LISTENER_NAME: INSIDE
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_CREATE_TOPICS: "flight_delay_classification_request:1:1"
+    networks:
+      - bdfinet
+        
+      #/opt/bitnami/kafka/bin/kafka-topics.sh --create --bootstrap-server kafka:9092 --replication-factor 1 --partitions 1 --topic flight_delay_classification_request
+      #/opt/bitnami/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list
 
   #########################
   ####### CASSANDRA #######
   #########################
 
   cassandra:
-    image: cassandra:latest
+    image: bitnami/cassandra
     container_name: cassandra
     ports:
-      -9042:9042
+      - 9042:9042
+      - 7000:7000
     networks:
       - bdfinet
-  cqlsh:
-    image: josemariafrupm/cqlsh-bdfi
-    container_name: cqlsh
-    networks:
-      - bdfinet
-    environment:
-      - CQLSH_HOST=cassandra
-      - CQLSH_PORT=9042
-      - CQLVERSION=3.4.6
-    depends_on:
-      cassandra:
-        condition: service_started
-  
+    volumes:
+      - ./cassandra/create_prediction_table.cql:/docker-entrypoint-initdb.d/create_prediction_table.cql
+    
   #####################
   ####### MONGO #######
   #####################
@@ -64,11 +56,47 @@ services:
     networks:
       - bdfinet
     ports:
-      -27017:27017
+      - 27017:27017
+      
+  #####################
+  ######## SBT ########
+  #####################
+        
+  sbt:
+    image: sbtscala/scala-sbt:graalvm-ce-21.2.0-java8_1.8.1_2.13.10
+    container_name: sbt
+    volumes:
+      - ../../BDFI_final:/BDFI_final
+      #- ../../flight_prediction:/flight_prediction
+    networks:
+      - bdfinet
+    command: 
+      - sh 
+      - -c 
+      - |
+        cd /BDFI_final/flight_prediction
+        sbt compile
+        sbt package
+    depends_on:
+      - mongodb
+      - kafka
+      - zookeeper
+  
 
   #####################
   ####### SPARK #######
   #####################
+  
+  proxy:
+    image: node:18-alpine
+    container_name: proxy
+    command: "node /client/proxy.js"
+    ports: 
+      - "3000:3000"
+    volumes:
+      - ../client:/client
+    networks:
+      - bdfinet
 
   ## SPARK MASTER
   spark-master:
@@ -79,14 +107,20 @@ services:
       - "9001:9001"
       - "8080:8080"
     environment:
-      - "SPARK_MASTER=${SPARK_MASTER}"
+      - "SPARK_MASTER=spark://spark-master:7077"
       - "INIT_DAEMON_STEP=setup_spark"
       - "constraint:node==spark-master"
-      - "SERVER=${SERVER}"
+      - "SERVER=proxy"
     volumes:
-      - ../../flight_prediction:/flight_prediction
+      - ../flight_prediction:/flight_prediction
+      #- ../../flight_prediction:/flight_prediction
     networks:
       - bdfinet
+    depends_on:
+      proxy:
+        condition: service_started
+      sbt:
+        condition: service_completed_successfully
   ## SPARK WORKER 1
   spark-worker-1:
     image: bde2020/spark-worker:3.2.1-hadoop3.2
@@ -96,12 +130,13 @@ services:
     ports:
       - "8081:8081"
     environment:
-      - "SPARK_MASTER=${SPARK_MASTER}"
+      - "SPARK_MASTER=spark://spark-master:7077"
       - "INIT_DAEMON_STEP=setup_spark"
       - "constraint:node==spark-worker"
-      - "SERVER=${SERVER}"
+      - "SERVER=proxy"
     volumes:
-      - ./flight_prediction:/flight_prediction
+      - ../flight_prediction:/flight_prediction
+      #- ./flight_prediction:/flight_prediction
     networks:
       - bdfinet
   ## SPARK WORKER 2
@@ -113,11 +148,12 @@ services:
     ports:
       - "8082:8081"
     environment:
-      - "SPARK_MASTER=${SPARK_MASTER}"
+      - "SPARK_MASTER=spark://spark-master:7077"
       - "constraint:node==spark-master"
-      - "SERVER=${SERVER}"
+      - "SERVER=proxy"
     volumes:
-      - ../../flight_prediction:/flight_prediction
+      - ../flight_prediction:/flight_prediction
+      #- ../../flight_prediction:/flight_prediction
     networks:
       - bdfinet
   ## SPARK SUBMIT
@@ -128,33 +164,71 @@ services:
       - spark-master
       - spark-worker-1
       - spark-worker-2
-      - zookeeper
-      - mongodb
     ports:
       - "4040:4040"
     environment:
-      - "SPARK_MASTER=${SPARK_MASTER}"
+      - "SPARK_MASTER=spark://spark-master:7077"
       - "constraint:node==spark-master"
-      - "SERVER=${SERVER}"
+      - "SERVER=proxy"
     command: bash -c "sleep 15; /spark/bin/spark-submit --class es.upm.dit.ging.predictor.MakePrediction --master  spark://spark-master:7077 --packages org.mongodb.spark:mongo-spark-connector_2.12:10.1.1,org.apache.spark:spark-sql-kafka-0-10_2.12:3.3.0 flight_prediction/target/scala-2.12/flight_prediction_2.12-0.1.jar"
     volumes:
-      - ../../flight_prediction:/flight_prediction
+      - ../flight_prediction:/flight_prediction
+      #- ../../flight_prediction:/flight_prediction
     networks:
       - bdfinet
   
-  #####################
-  ####### FLASK #######
-  #####################
+  # #####################
+  # ####### FLASK #######
+  # #####################
 
   flask:
-    image: josemariafrupm/flask-bdfi
+    image: josemariafrupm/flask2-bdfi
     container_name: flask
+    environment:
+      - PROJECT_HOME=/bdfi/BDFI_final
     networks:
       - bdfinet
     depends_on:
-      - zookeeper
-      - kafka
-      - mongodb
-      - cassandra
       - spark-submit
-    command: bash -c "python3 /bdfi/practica_creativa/resources/web/predict-flask.py"
+    # volumes:
+    #   - ../../BDFI_final:/BDFI_final
+    command: 
+      - bash
+      - -c 
+      - |
+        cd /BDFI_final/resources/web
+        python3 predict-flask.py
+
+    ## Another possible option
+
+    # image: python:3.11.7-slim-bookworm
+    # container_name: flask
+    # environment:
+    #   - PROJECT_HOME=/bdfi/BDFI_final
+    # networks:
+    #   - bdfinet
+    # depends_on:
+    #   mongodb:
+    #     condition: service_completed_successfully
+    #   zookeeper:
+    #     condition: service_completed_successfully
+    #   kafka:
+    #     condition: service_completed_successfully
+    #   cassandra:
+    #     condition: service_completed_successfully
+    #   spark-submit:
+    #     condition: service_completed_successfully
+    # volumes:
+    #   - ../../BDFI_final:/BDFI_final
+    # command: 
+    #   - bash
+    #   - -c 
+    #   - |
+    #     cd /BDFI_final
+    #     pip install -r requirements.txt
+    #     cd /BDFI_final/resources/web
+    #     python3 predict-flask.py
+    
+networks:
+  bdfinet:
+    driver : bridge

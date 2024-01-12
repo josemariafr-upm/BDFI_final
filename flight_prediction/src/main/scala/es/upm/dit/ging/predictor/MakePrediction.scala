@@ -12,6 +12,9 @@ import com.datastax.spark.connector._
 
 object MakePrediction {
 
+  //final val HOST = sys.env.getOrElse("SERVER", "localhost")
+  final val MASTER = sys.env.getOrElse("SPARK_MASTER", "local[*]")
+
   def main(args: Array[String]): Unit = {
     println("Fligth predictor starting...")
 
@@ -23,14 +26,14 @@ object MakePrediction {
       
       //.config("spark.cassandra.connection.host", "localhost") // Cambia la dirección y puertos según la configuración de Cassandra
       //.config("spark.cassandra.connection.port", "7000")
-      .master("local[*]")  // Esto se cambia cuando el master esté en otro lado
+      .master(MASTER)  // Esto se cambia cuando el master esté en otro lado
       .getOrCreate()
     
     import spark.implicits._
 
     //Load the arrival delay bucketizer
     //val base_path= "/Users/admin/Downloads/practica_big_data_2019"
-    val base_path= "/home/ibdn/practica_creativa"
+    val base_path= "/BDFI_final"
     val arrivalBucketizerPath = "%s/models/arrival_bucketizer_2.0.bin".format(base_path)
     print(arrivalBucketizerPath.toString())
     val arrivalBucketizer = Bucketizer.load(arrivalBucketizerPath)
@@ -55,7 +58,7 @@ object MakePrediction {
     val df = spark
       .readStream
       .format("kafka")
-      .option("kafka.bootstrap.servers", "localhost:9092")  //Aquí habrá que cambiar cuando sea kafka en contenedor diferente creo
+      .option("kafka.bootstrap.servers", "kafka:9092")  //Aquí habrá que cambiar cuando sea kafka en contenedor diferente creo
       .option("subscribe", "flight_delay_classification_request")
       .load()
     df.printSchema()
@@ -161,7 +164,7 @@ object MakePrediction {
       .writeStream
       .format("org.apache.spark.sql.cassandra")
       .outputMode("append")
-      .option("spark.cassandra.connection.host", "127.0.0.1") //Cambiar por cassandra creo
+      .option("spark.cassandra.connection.host", "cassandra") //Cambiar por cassandra creo
       .option("spark.cassandra.connection.port", "9042")
       .option("keyspace", "agile_data_science")
       //.mode("append")
