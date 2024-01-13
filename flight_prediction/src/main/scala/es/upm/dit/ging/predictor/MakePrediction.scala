@@ -169,11 +169,9 @@ object MakePrediction {
       .option("spark.cassandra.auth.username", "cassandra")
       .option("spark.cassandra.auth.password", "cassandra")
       .option("keyspace", "agile_data_science")
-      //.mode("append")
       .option("table", "flight_delay_classification_response")
       .option("checkpointLocation", "/tmp")
       .option("confirm.truncate", true)
-      //.save()  //Según el vídeo no hace falta esto, sino start
     
     //val dataStreamWriter = finalPredictions
 
