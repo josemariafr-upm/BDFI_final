@@ -1,3 +1,5 @@
+## Update repositories and install Git and PIP
+
 sudo apt update
 sudo apt install -y pip git
 

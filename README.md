@@ -2,7 +2,48 @@
 Autores:
  - José María Fernández Rodríguez
  - Gabriel Funes Gabaldón
- 
+---
+Instrucciones de despliegue:
+- **Opción automatizada**: Descargar el script `initiate_server.sh` de este repositorio y ejecutarlo en una máquina con SO basado en Debian (Ubuntu por ejemplo) con `./initiate_server.sh`.
+- **Opción manual**: Ejecutar cada uno de los comandos del script `initiate_server.sh` de este repositorio, que son los siguientes:
+
+    Actualización de repositorios e instalación de Git y PIP
+    ```
+    sudo apt update
+    sudo apt install -y pip git
+    ```
+
+    Instalación de SDKMAN, Java 8, Spark y SBT
+    ```
+    curl -s "https://get.sdkman.io" | bash
+    source "$HOME/.sdkman/bin/sdkman-init.sh"
+    sdk install java 8.0.302-open
+    sdk install spark 3.3.2
+    sdk install sbt
+    ```
+    Clonación de repositorio y cambio de directorio al del repo
+    ```
+    git clone https://github.com/josemariafr-upm/BDFI_final
+    cd BDFI_final/
+    ```
+    Entrenamiento de modelos
+    ```
+    export SPARK_HOME=$HOME/.sdkman/candidates/spark/3.3.2/
+    export JAVA_HOME=$HOME/.sdkman/candidates/java/8.0.302-open
+    pip install -r requirements.txt
+    python3 resources/train_spark_mllib_model.py .
+    ```
+    Compilación y empaquetamiento del proyecto de Scala
+    ```
+    cd flight_prediction/
+    sbt compile
+    sbt package
+    ```
+    Despliegue de contenedores
+    ```
+    cd ../docker
+    sudo docker compose up
+    ```
 ## Índice
 
 - [Introducción](#intro)
@@ -41,11 +82,15 @@ Para este objetivo desarrollamos a partir del despliegue en la máquina local si
 
 Creamos la keyspace:
 
-`CREATE KEYSPACE IF NOT EXISTS agile_data_science WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 1};`
+```
+CREATE KEYSPACE IF NOT EXISTS agile_data_science WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 1};
+```
 
 Indicamos la keyspace a utilizar para crear la tabla:
 
-`USE agile_data_science;`
+```
+USE agile_data_science;
+```
 
 Creamos la tabla, para la cual hay que tener en cuenta que los campos llevan mayúsculas, por lo que la query necesita de las comillas dobles para que Cassandra respete las mayus. En caso de no ponerlas los campos se crean con minúsculas, y al ser el .scala sensible a las mismas la inserción de datos no funcionará:
 
@@ -151,7 +196,9 @@ Para ambos dockers se ha seguido la información de [este sitio web](https://www
 
 **Spark:** `bde2020/spark-master:3.3.0-hadoop3.3`, `bde2020/spark-worker:3.3.0-hadoop3.3` y `bde2020/spark-submit:3.3.0-hadoop3.3`, de igual forma que se hizo en la práctica de [este repositorio](https://github.com/Big-Data-ETSIT/P6_spark_streaming_docker), con la diferencia de las versiones de Spark y Hadoop. Asimismo, el comando a ejecutar por el contenedor spark-submit (donde se indica el nodo master del cluster y los paquetes a utilizar, así como la clase) es el siguiente:
 
-`/spark/bin/spark-submit --class es.upm.dit.ging.predictor.MakePrediction --master  spark://spark-master:7077 --packages org.mongodb.spark:mongo-spark-connector_2.12:10.1.1,org.apache.spark:spark-sql-kafka-0-10_2.12:3.3.0,com.datastax.spark:spark-cassandra-connector_2.12:3.3.0,com.github.jnr:jnr-posix:3.1.18 BDFI_final/flight_prediction/target/scala-2.12/flight_prediction_2.12-0.1.jar`
+```
+/spark/bin/spark-submit --class es.upm.dit.ging.predictor.MakePrediction --master  spark://spark-master:7077 --packages org.mongodb.spark:mongo-spark-connector_2.12:10.1.1,org.apache.spark:spark-sql-kafka-0-10_2.12:3.3.0,com.datastax.spark:spark-cassandra-connector_2.12:3.3.0,com.github.jnr:jnr-posix:3.1.18 BDFI_final/flight_prediction/target/scala-2.12/flight_prediction_2.12-0.1.jar
+```
 
 **Flask:** `josemariafrupm/flask-bdfi`, imagen propia basada en `python:3.11.7-slim-bookworm` sobre la cual se instalan los requisitos del requirements.txt con pip, para lo cual descarga el repositorio con git (previa instalación del mismo), instala los requirements, y borra de nuevo el repositorio tras la instalación para reducir el tamaño de la imagen (grande de por sí). Otra forma de crear la imagen sin necesidad de git hubiera sido, mediante instalación de wget, descargar sólo el requirements.txt con el comando `wget https://raw.githubusercontent.com/josemariafr-upm/BDFI_final/master/requirements.txt`, ahorrando un paso.
 
@@ -165,7 +212,7 @@ Como resultado tenemos funcionando la web de nuevo en http://localhost:5001/flig
 
 ### Despliegue del escenario en servidor en la nube <a id="nube"></a>
 
-Para el despliegue en servidor en la nube hemos creado el script initiate_server.sh, cuya ejecución automatiza el despliegue del escenario. Los comandos que ejecuta a grandes rasgos son los siguientes:
+Para el despliegue en servidor en la nube hemos creado el script initiate_server.sh, cuya ejecución automatiza el despliegue del escenario (las instrucciones están al inicio de este README). Los comandos que ejecuta a grandes rasgos son los siguientes:
 
 - Actualiza la lista de repositorios de la VM e instala git y pip.
 - Instala SDKMAN, para con ello instalar java, spark y sbt.
