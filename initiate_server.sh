@@ -1,14 +1,12 @@
-## Update repositories and install Git and PIP
-
 sudo apt update
-sudo apt install -y pip git
+sudo apt install -y pip git wget zip unzip
 
 ## SDK INSTALL ##
 
 curl -s "https://get.sdkman.io" | bash
-source "$HOME/.sdkman/bin/sdkman-init.sh"
-sdk install java 8.0.302-open
-sdk install spark 3.3.2
+source "$HOME/.sdkman/bin/sdkman-init.sh" && \
+sdk install java 8.0.302-open && \
+sdk install spark 3.3.2 && \
 sdk install sbt
 
 git clone https://github.com/josemariafr-upm/BDFI_final
