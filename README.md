@@ -4,7 +4,7 @@ Autores:
  - Gabriel Funes Gabaldón
 ---
 Instrucciones de despliegue:
-- **Opción automatizada**: Descargar el script `initiate_server.sh` de este repositorio y ejecutarlo en una máquina con SO basado en Debian (Ubuntu por ejemplo) con `./initiate_server.sh`.
+- **Opción automatizada**: Descargar el script `initiate_server.sh` de este repositorio y ejecutarlo en una máquina con SO basado en Ubuntu  con `./initiate_server.sh`.
 - **Opción manual**: Ejecutar cada uno de los comandos del script `initiate_server.sh` de este repositorio, que son los siguientes:
 
     Actualización de repositorios e instalación de Git y PIP
@@ -52,7 +52,7 @@ Instrucciones de despliegue:
     - [Dockerización del escenario](#docker)
     - [Despliegue del escenario en servidor en la nube](#nube)
 - [Desarrollo de los objetivos opcionales](#opcional)
-- [Conclusiones](#conclusiones)
+    - [Despliegue del escenario en Kubernetes](#k8s)
 
 ## Introducción <a id="intro"></a>
 
@@ -220,12 +220,23 @@ Para el despliegue en servidor en la nube hemos creado el script initiate_server
 - Entra en la carpeta del proyecto de Scala (flight_prediction) y compila y empaqueta el mismo con sbt.
 - Por último, entra en la carpeta docker y despliega los contenedores.
 
-Una vez arrancado el escenario se puede acceder al mismo, esta vez en la dirección http://<DIRECCIÓN_SERVIDOR>:5001/flights/delays/predict_kafka (la dirección web del servidor se deberá extraer de la página de gestión de la VM):
+Una vez arrancado el escenario se puede acceder al mismo, esta vez en la dirección http://<DIRECCIÓN_SERVIDOR>:5001/flights/delays/predict_kafka (la dirección web del servidor se deberá extraer de la página de gestión de la VM; además se deberá haber configurado en el firewall de la plataforma que el puerto 5001 sea accesible desde el exterior):
 
 ![Acceso a servidor web en nube](images/servidorweb.jpeg)
 
 ## Objetivos opcionales <a id="opcional"></a>
+### Despliegue del escenario en Kubernetes <a id="k8s"></a>
 
-## Conclusiones <a id="conclusiones"></a>
+Se han desarrollado los diferentes archivos yaml para el despliegue en K8s, además de un script de despliegue automatizado que hace los kubectl apply de manera gradual (y con sleeps intermedios para dar tiempo a los pods a desplegarse). Por orden de despliegue:
+
+- **namespace.yaml:** crea el namespace con nombre 'bdfi', en el cual se desplegarán los servicios, deployments y pods.
+- **kafkazk.yaml:** Crea un servicio con dos deployments (uno para Zookeeper y otro para Kafka).
+- **mongodb.yaml:** Crea un servicio y deployment para el componente de MongoDB, que ya contendrá los datos precargados.
+- **cassandra.yaml:** Crea el servicio y despliegue de la base de datos de Cassandra. Para ello monta un volumen que apunta directamente al script de creación del keyspace y tabla necesaria (de igual manera que ocurre en el docker-compose de la parte obligatoria de la práctica).
+- **spark.yaml:** Crea un servicio con dos deployments: uno para el conjunto de spark-master y spark-submit, y otro para los spark-worker, indicando un sólo contenedor pero definiendo el número de réplicas que deseamos (2 en nuestro caso). También hacen uso del directorio de la práctica de la máquina host con el uso de volúmenes.
+- **flask.yaml:** Crea servicio y deployment para flask, una vez más haciendo uso del directorio directo del host.
+
+Dicho todo esto, no hemos sido capaces de ponerlo en marcha correctamente, y por tanto no se ha probado el despliegue completo de este escenario.
+
 
 

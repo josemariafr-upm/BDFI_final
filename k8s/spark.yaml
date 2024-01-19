@@ -1,0 +1,132 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: spark-svc
+  namespace: bdfi
+spec:
+  ports:
+    - name: masterport
+      port: 7077
+      targetPort: 7077
+    - name: workerport
+      port: 8081
+      targetPort: 8081
+    - name: submitport
+      port: 4040
+      targetPort: 4040
+    
+  selector:
+    app: spark-app
+
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: spark-deploy
+  namespace: bdfi
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: spark-app
+  template:
+    metadata:
+      labels:
+        app: spark-app
+    spec:
+      volumes:
+        - name: repo
+          hostPath: 
+            path: /home/bdfi/BDFI_final
+
+      containers:
+        - name: spark-master
+          image: bde2020/spark-master:3.3.0-hadoop3.3
+          ports:
+            - containerPort: 7077
+          env:
+            - name: SPARK_MASTER
+              value: spark://localhost:7077
+            - name: INIT_DAEMON_STEP
+              value: setup_spark
+            - name: SERVER
+              value: proxy
+            - name: KAFKA
+              value: localhost
+          volumeMounts:
+            - name: repo
+              mountPath: /BDFI_final
+
+        - name: spark-submit
+          image: bde2020/spark-submit:3.3.0-hadoop3.3
+          ports:
+            - containerPort: 4040
+          env:
+            - name: SPARK_MASTER
+              value: spark://localhost:7077
+            - name: SERVER
+              value: proxy
+            - name: KAFKA
+              value: localhost:9092
+          command:
+            - bash
+            - -c
+            - |
+              echo "Waiting 1 minute to cassandra" && sleep 60
+              echo "50 seconds" && sleep 10
+              echo "40 seconds" && sleep 10
+              echo "30 seconds" && sleep 10
+              echo "20 seconds" && sleep 10
+              echo "10 seconds" && sleep 5
+              echo "5" && sleep 1
+              echo "4" && sleep 1
+              echo "3" && sleep 1
+              echo "2" && sleep 1
+              echo "1" && sleep 1
+              echo "Executing spark-submit"
+              /spark/bin/spark-submit --class es.upm.dit.ging.predictor.MakePrediction --master  spark://localhost:7077 --packages org.mongodb.spark:mongo-spark-connector_2.12:10.1.1,org.apache.spark:spark-sql-kafka-0-10_2.12:3.3.0,com.datastax.spark:spark-cassandra-connector_2.12:3.3.0,com.github.jnr:jnr-posix:3.1.18 /BDFI_final/flight_prediction/target/scala-2.12/flight_prediction_2.12-0.1.jar
+          volumeMounts:
+            - name: repo
+              mountPath: /BDFI_final
+              
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: spark-worker-deploy
+  namespace: bdfi
+spec:
+  replicas: 2 
+  selector:
+    matchLabels:
+      app: spark-app
+      role: spark-worker
+  template:
+    metadata:
+      labels:
+        app: spark-app
+        role: spark-worker
+    spec:
+      volumes:
+        - name: repo
+          hostPath:
+            path: /home/bdfi/BDFI_final
+      containers:
+        - name: spark-worker
+          image: bde2020/spark-worker:3.3.0-hadoop3.3
+          ports:
+            - containerPort: 8081
+          env:
+            - name: SPARK_MASTER
+              value: spark://localhost:7077
+
+            - name: INIT_DAEMON_STEP
+              value: setup_spark
+            - name: SERVER
+              value: proxy
+            - name: KAFKA
+              value: localhost:9092
+          volumeMounts:
+            - name: repo
+              mountPath: /BDFI_final

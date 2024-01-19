@@ -1,0 +1,54 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: flask-svc
+  namespace: bdfi
+spec:
+  type: NodePort
+  ports:
+    - name: flaskport1
+      port: 5000
+      targetPort: 5000
+      nodePort: 30500
+    - name: flaskport2
+      port: 5001
+      targetPort: 5001
+      nodePort: 30501
+  selector:
+    app: flask
+
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: flask-deploy
+  namespace: bdfi
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: flask
+  template:
+    metadata:
+      labels:
+        app: flask
+    spec:
+      volumes:
+        - name: repo
+          hostPath: 
+            path: /home/bdfi/BDFI_final
+      containers:
+        - name: flask
+          image: josemariafrupm/flask-bdfi
+          ports:
+            - containerPort: 5000
+            - containerPort: 5001
+          env:
+            - name: PROJECT_HOME
+              value: /BDFI_final
+            - name: MONGO
+              value: localhost
+          volumeMounts:
+            - name: repo
+              mountPath: /BDFI_final

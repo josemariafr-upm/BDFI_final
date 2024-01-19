@@ -1,0 +1,50 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: cassandra-svc
+  namespace: bdfi
+spec:
+  ports:
+    - name: cassandraport
+      port: 9042
+      targetPort: 9042
+  selector:
+    app: cassandra
+
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cassandra-deploy
+  namespace: bdfi
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cassandra
+  template:
+    metadata:
+      labels:
+        app: cassandra
+    spec:
+      volumes:
+        - name: casscript
+          hostPath: 
+            path: /home/bdfi/BDFI_final/docker/cassandra/create_prediction_table.cql
+      containers:
+        - name: cassandra
+          image: bitnami/cassandra
+          ports:
+            - containerPort: 9042
+          env:
+            - name: CASSANDRA_USER
+              value: cassandra
+            - name: CASSANDRA_PASSWORD
+              value: cassandra
+          volumeMounts:
+            - name: casscript
+              mountPath: /docker-entrypoint-initdb.d/create_prediction_table.cql
+      
+
+
