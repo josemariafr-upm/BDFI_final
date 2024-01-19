@@ -164,6 +164,7 @@ services:
   spark-submit:
     image: bde2020/spark-submit:3.3.0-hadoop3.3
     container_name: spark-submit
+    restart: on-failure
     depends_on:
       - spark-master
       - spark-worker-1
